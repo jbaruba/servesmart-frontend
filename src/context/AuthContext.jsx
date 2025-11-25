@@ -8,7 +8,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [initializing, setInitializing] = useState(true);
 
-  // Bij opstart: user inladen uit localStorage
+  // User inladen uit localStorage bij opstart
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -32,25 +32,55 @@ export function AuthProvider({ children }) {
     }
 
     try {
-      const res = await loginRequest({ email, password });
+      const res = await loginRequest({
+        email: email.trim(),
+        password,
+      });
 
-      const apiData = res.data;
-      const userData = apiData?.data ?? apiData;
+      console.log("Login response from API:", res.data);
 
-      if (!userData) {
-        throw new Error(apiData?.message || "Unknown error: no user received.");
+      const apiData = res.data ?? {};
+
+      // Als backend ApiResponse gebruikt: { success, message, data }
+      let userData;
+      if (apiData && typeof apiData === "object" && "data" in apiData) {
+        if (apiData.success === false) {
+          // backend geeft zelf aan dat het fout is
+          throw new Error(apiData.message || "Login failed");
+        }
+        userData = apiData.data;
+      } else {
+        // fallback: misschien stuurt backend direct een user terug
+        userData = apiData;
+      }
+
+      if (!userData || !userData.id) {
+        // response vorm klopt niet – maar geen credentials fout
+        throw new Error(
+          apiData.message || "Login response is invalid or missing user."
+        );
       }
 
       setUser(userData);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
-
       return userData;
     } catch (err) {
-      const message =
-        err.response?.data?.error ||
-        err.response?.data?.message ||
-        "Invalid login credentials.";
-      throw new Error(message);
+      console.error("Login error:", err);
+
+      // Als het een HTTP error is (401/400/etc)
+      if (err.response?.data) {
+        const apiErr = err.response.data;
+        const msg = apiErr.error || apiErr.message || "Invalid login credentials.";
+        throw new Error(msg);
+      }
+
+      // Als het een zelf gegooide Error is (bijv. response vorm fout)
+      if (err.message) {
+        throw err;
+      }
+
+      // Fallback
+      throw new Error("Invalid login credentials.");
     }
   }
 

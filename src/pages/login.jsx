@@ -1,7 +1,9 @@
 import React, { useState } from "react";
-import { login as loginRequest } from "../services/authApi";
+import { useAuth } from "../context/AuthContext";
 
-export default function Login({ onLogin }) {
+export default function Login() {
+  const { login } = useAuth();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -18,19 +20,10 @@ export default function Login({ onLogin }) {
 
     setSubmitting(true);
     try {
-      const res = await loginRequest({ email, password });
-      const user = res.data?.data ?? res.data;
-      if (!user) {
-        setError("Unknown error: no user received.");
-      } else {
-        onLogin(user);
-      }
+      await login(email, password); // 👈 uit AuthContext
+      // Redirect gebeurt automatisch via PublicRoute in App.jsx
     } catch (err) {
-      const message =
-        err.response?.data?.message ||
-        err.response?.data?.error ||
-        "Invalid login credentials.";
-      setError(message);
+      setError(err.message || "Invalid login credentials.");
     } finally {
       setSubmitting(false);
     }
