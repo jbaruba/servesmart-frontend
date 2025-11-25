@@ -3,3 +3,269 @@
 .App {
   text-align: center;
 }
+
+/* --- CATEGORY HEADER --- */
+.category-header {
+  border-bottom: 1px solid #dee2e6;
+  padding: 0.5rem 0.75rem;
+  background-color: #f8f9fa;
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+/* Expand/collapse button */
+.expand-btn {
+  border: 1px solid #ced4da;
+  background: #fff;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.expand-btn:hover {
+  background-color: #f1f3f5;
+  transform: scale(1.05);
+}
+
+/* Category name */
+.category-name {
+  font-weight: 600;
+  font-size: 1rem;
+  color: #212529;
+}
+
+/* --- ACTION BUTTONS --- */
+.action-btn {
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.action-btn.add {
+  background-color: #e3f2fd;
+  color: #0d6efd;
+}
+
+.action-btn.add:hover {
+  background-color: #cfe2ff;
+}
+
+.action-btn.edit {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.action-btn.edit:hover {
+  background-color: #ffe8a1;
+}
+
+.action-btn.delete {
+  background-color: #f8d7da;
+  color: #842029;
+}
+
+.action-btn.delete:hover {
+  background-color: #f1b0b7;
+}
+
+/* --- TOGGLE SWITCH --- */
+.toggle-switch {
+  width: 70px;
+  height: 28px;
+  border-radius: 20px;
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  display: flex;
+  align-items: center;
+  padding: 0 5px;
+  user-select: none;
+}
+
+.toggle-switch.on {
+  background-color: #28a745;
+  justify-content: flex-end;
+}
+
+.toggle-switch.off {
+  background-color: #ccc;
+  justify-content: flex-start;
+}
+
+.toggle-circle {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background-color: white;
+  transition: all 0.3s ease;
+}
+
+.toggle-text {
+  position: absolute;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: bold;
+  left: 8px;
+  transition: left 0.3s ease;
+}
+
+.toggle-switch.on .toggle-text {
+  left: 8px;
+}
+
+.toggle-switch.off .toggle-text {
+  left: 38px;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* --- here begin de menuitem--- */
+/* Badges / chips for flags in read mode */
+.flag-chip {
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.25rem 0.4rem;
+  border-radius: 0.4rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid transparent;
+}
+
+.available-chip {
+  background-color: #d1e7dd;
+  color: #0f5132;
+  border-color: #badbcc;
+}
+
+.gluten-chip {
+  background-color: #fff3cd;
+  color: #664d03;
+  border-color: #ffecb5;
+}
+
+.nuts-chip {
+  background-color: #fde2e4;
+  color: #7f1d1d;
+  border-color: #fbcfd3;
+}
+
+.dairy-chip {
+  background-color: #e0f2fe;
+  color: #075985;
+  border-color: #bae6fd;
+}
+
+.adult-chip {
+  background-color: #f8d7da;
+  color: #842029;
+  border-color: #f5c2c7;
+}
+
+/* Action buttons (edit/delete) same style as CategoryHeader buttons */
+.action-btn {
+  border: none;
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.action-btn.edit {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.action-btn.edit:hover {
+  background-color: #ffe8a1;
+}
+
+.action-btn.delete {
+  background-color: #f8d7da;
+  color: #842029;
+}
+
+.action-btn.delete:hover {
+  background-color: #f1b0b7;
+}
+
+/* Mini toggle row  */
+.mini-toggle-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.mini-toggle-label {
+  min-width: 50px;
+  text-align: right;
+  color: #495057;
+}
+
+/* The small pill switch in edit mode */
+.mini-toggle {
+  width: 44px;
+  height: 22px;
+  border-radius: 20px;
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.25s ease;
+  display: flex;
+  align-items: center;
+  padding: 0 3px;
+  user-select: none;
+  border: 1px solid rgba(0,0,0,0.1);
+}
+
+.mini-toggle.on {
+  background-color: #28a745;
+  justify-content: flex-end;
+}
+
+.mini-toggle.off {
+  background-color: #ccc;
+  justify-content: flex-start;
+}
+
+.mini-toggle-circle {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background-color: #fff;
+  transition: all 0.25s ease;
+}
+
+
+.item-flags {
+  font-size: 0.7rem;
+  line-height: 1;
+}

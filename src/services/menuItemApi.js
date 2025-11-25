@@ -1,17 +1,8 @@
 import api from './api';
 
-// Read
-export const listMenuItems = (params = {}) =>
-  api.get('/menu-items', { params }); // { categoryId, q? }
-
-// Create
-export const createMenuItem = (payload) =>
-  api.post('/menu-items', payload); // { name, price, description?, active?, categoryId }
-
-// Update
-export const updateMenuItem = (id, payload) =>
-  api.put(`/menu-items/${id}`, payload); // fields you want to change
-
-// Delete
-export const deleteMenuItem = (id) =>
-  api.delete(`/menu-items/${id}`);
+export const listMenuItems   = (categoryId) => api.get(`/menu/category/${categoryId}`);
+export const getMenuItem     = (id) => api.get(`/menu/${id}`);
+export const createMenuItem  = (payload) => api.post('/menu', payload);
+export const updateMenuItem  = (id, payload) => api.put(`/menu/${id}`, payload);
+export const deleteMenuItem  = (id) => api.delete(`/menu/${id}`);
+export const listAllItems    = () => api.get('/menu');
