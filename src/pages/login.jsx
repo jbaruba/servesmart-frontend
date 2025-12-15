@@ -20,8 +20,7 @@ export default function Login() {
 
     setSubmitting(true);
     try {
-      await login(email, password); // 👈 uit AuthContext
-      // Redirect gebeurt automatisch via PublicRoute in App.jsx
+      await login(email, password); 
     } catch (err) {
       setError(err.message || "Invalid login credentials.");
     } finally {

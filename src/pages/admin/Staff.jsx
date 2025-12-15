@@ -3,6 +3,9 @@ import StaffToolbar from "../../components/user/StaffToolbar";
 import StaffTable from "../../components/user/StaffTable";
 import StaffCreateForm from "../../components/user/StaffCreateForm";
 import { getUsers, registerUser, updateUser, deleteUser } from "../../services/usersApi";
+import { getLoginLogsForUser } from "../../services/loginLogApi";
+import UserLoginLogToolbar from "../../components/user/UserLoginLogToolbar";
+import UserLoginLogTable from "../../components/user/UserLoginLogTable";
 
 const emptyForm = {
   email: "",
@@ -29,6 +32,13 @@ export default function Staff() {
   const [formSuccess, setFormSuccess] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [editUserId, setEditUserId] = useState(null);
+
+  // Login log state
+  const [logUser, setLogUser] = useState(null);
+  const [logs, setLogs] = useState([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [logsError, setLogsError] = useState(null);
+  const [logStatusFilter, setLogStatusFilter] = useState("ALL");
 
   useEffect(() => {
     let isMounted = true;
@@ -83,6 +93,14 @@ export default function Staff() {
       return matchesSearch && matchesRole && matchesActive;
     });
   }, [staff, searchTerm, roleFilter, activeFilter]);
+
+  const filteredLogs = useMemo(() => {
+    return logs.filter((log) => {
+      if (logStatusFilter === "ALL") return true;
+      if (!log.status) return false;
+      return log.status.toUpperCase() === logStatusFilter;
+    });
+  }, [logs, logStatusFilter]);
 
   function handleFormChange(e) {
     const { name, value } = e.target;
@@ -206,6 +224,29 @@ export default function Staff() {
     }
   }
 
+  async function handleViewLogs(user) {
+    setLogUser(user);
+    setLogs([]);
+    setLogsError(null);
+    setLogStatusFilter("ALL");
+    setLogsLoading(true);
+
+    try {
+      const res = await getLoginLogsForUser(user.id);
+      const data = res.data?.data ?? res.data;
+      setLogs(Array.isArray(data) ? data : []);
+    } catch (err) {
+      const message =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        "Could not load login activity.";
+      setLogsError(message);
+    } finally {
+      setLogsLoading(false);
+    }
+  }
+
   return (
     <div className="p-3 h-100 d-flex flex-column">
       <h2 className="mb-3">Staff Management</h2>
@@ -221,9 +262,10 @@ export default function Staff() {
         filteredCount={filteredStaff.length}
       />
 
-      <div className="row mt-3 flex-grow-1">
-        <div className="col-lg-7 mb-3 mb-lg-0 d-flex flex-column">
-          <div className="card flex-grow-1">
+      {/* Boven: brede staff overview */}
+      <div className="row mt-3">
+        <div className="col-12">
+          <div className="card">
             <div className="card-header d-flex justify-content-between align-items-center">
               <span className="fw-semibold">Staff overview</span>
             </div>
@@ -239,14 +281,18 @@ export default function Staff() {
                   users={filteredStaff}
                   onEditUser={handleEditUser}
                   onDeleteUser={handleDeleteUser}
+                  onViewLogs={handleViewLogs}
                 />
               )}
             </div>
           </div>
         </div>
+      </div>
 
-        <div className="col-lg-5 d-flex flex-column">
-          <div className="card">
+      {/* Onder: links edit, rechts logs */}
+      <div className="row mt-3">
+        <div className="col-lg-6 mb-3">
+          <div className="card h-100">
             <div className="card-header">
               <span className="fw-semibold">
                 {editUserId ? "Edit staff member" : "Create new account"}
@@ -265,6 +311,40 @@ export default function Staff() {
               />
             </div>
           </div>
+        </div>
+
+        <div className="col-lg-6 mb-3">
+          {logUser && (
+            <div className="card h-100">
+              <div className="card-header d-flex justify-content-between align-items-center">
+                <span className="fw-semibold">
+                  Login activity – {logUser.email}
+                </span>
+              </div>
+              <div className="card-body d-flex flex-column">
+                <UserLoginLogToolbar
+                  statusFilter={logStatusFilter}
+                  onStatusFilterChange={setLogStatusFilter}
+                  totalCount={logs.length}
+                  filteredCount={filteredLogs.length}
+                />
+
+                {logsLoading && (
+                  <div className="text-muted small mb-2">Loading logs…</div>
+                )}
+
+                {logsError && (
+                  <div className="alert alert-danger py-1 small">
+                    {logsError}
+                  </div>
+                )}
+
+                {!logsLoading && !logsError && (
+                  <UserLoginLogTable logs={filteredLogs} />
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -74,7 +74,6 @@ function RequireRole({ role, children }) {
 
   const userRole = user?.role?.toUpperCase() ?? "";
   if (userRole !== role.toUpperCase()) {
-    // Als iemand met verkeerde rol op deze route komt:
     if (userRole === "ADMIN") {
       return <Navigate to="/admin/home" replace />;
     }

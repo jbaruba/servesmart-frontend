@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { login as loginRequest } from "../services/authApi";
+import { login as loginRequest, logout as logoutRequest } from "../services/authApi";
 
 const AuthContext = createContext(null);
 const STORAGE_KEY = "authUser";
@@ -8,13 +8,12 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [initializing, setInitializing] = useState(true);
 
-  // User inladen uit localStorage bij opstart
+
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
-        const parsed = JSON.parse(stored);
-        setUser(parsed);
+        setUser(JSON.parse(stored));
       }
     } catch (e) {
       console.error("Failed to parse stored auth user", e);
@@ -26,67 +25,63 @@ export function AuthProvider({ children }) {
 
   const isAuthenticated = !!user;
 
-  async function login(email, password) {
-    if (!email || !password) {
-      throw new Error("Email and password are required.");
+
+ async function login(email, password) {
+  if (!email || !password) throw new Error("Email and password are required.");
+
+  try {
+    const res = await loginRequest({
+      email: email.trim(),
+      password,
+    });
+
+    const api = res.data ?? {};
+    const success = api.success ?? true;
+    const message = api.message;
+    const received = api.data; 
+
+    if (!success) {
+      throw new Error(message || "Login failed");
     }
 
-    try {
-      const res = await loginRequest({
-        email: email.trim(),
-        password,
-      });
-
-      console.log("Login response from API:", res.data);
-
-      const apiData = res.data ?? {};
-
-      // Als backend ApiResponse gebruikt: { success, message, data }
-      let userData;
-      if (apiData && typeof apiData === "object" && "data" in apiData) {
-        if (apiData.success === false) {
-          // backend geeft zelf aan dat het fout is
-          throw new Error(apiData.message || "Login failed");
-        }
-        userData = apiData.data;
-      } else {
-        // fallback: misschien stuurt backend direct een user terug
-        userData = apiData;
-      }
-
-      if (!userData || !userData.id) {
-        // response vorm klopt niet – maar geen credentials fout
-        throw new Error(
-          apiData.message || "Login response is invalid or missing user."
-        );
-      }
-
-      setUser(userData);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
-      return userData;
-    } catch (err) {
-      console.error("Login error:", err);
-
-      // Als het een HTTP error is (401/400/etc)
-      if (err.response?.data) {
-        const apiErr = err.response.data;
-        const msg = apiErr.error || apiErr.message || "Invalid login credentials.";
-        throw new Error(msg);
-      }
-
-      // Als het een zelf gegooide Error is (bijv. response vorm fout)
-      if (err.message) {
-        throw err;
-      }
-
-      // Fallback
-      throw new Error("Invalid login credentials.");
+    if (!received || !received.user || !received.token) {
+      throw new Error("Invalid login response: missing user or token.");
     }
+
+    const user = received.user;
+    const token = received.token;
+
+    // save user
+    setUser(user);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+
+    // save token
+    localStorage.setItem("authToken", token);
+
+    return user;
+  } catch (err) {
+    console.error("Login error:", err);
+
+    if (err.response?.data) {
+      const resErr = err.response.data;
+      throw new Error(resErr.error || resErr.message || "Login failed.");
+    }
+
+    throw new Error(err.message || "Login failed.");
   }
+}
 
-  function logout() {
-    setUser(null);
-    localStorage.removeItem(STORAGE_KEY);
+  async function logout() {
+    try {
+      if (user?.id) {
+        await logoutRequest(user.id);
+      }
+    } catch (e) {
+      console.warn("Logout API call failed (ignored):", e);
+    } finally {
+      setUser(null);
+      localStorage.removeItem(STORAGE_KEY);
+    }
   }
 
   const value = {
@@ -102,8 +97,6 @@ export function AuthProvider({ children }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) {
-    throw new Error("useAuth must be used inside an AuthProvider");
-  }
+  if (!ctx) throw new Error("useAuth must be used inside an AuthProvider");
   return ctx;
 }
