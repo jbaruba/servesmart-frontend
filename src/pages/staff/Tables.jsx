@@ -1,14 +1,8 @@
-// src/pages/staff/Tables.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import {
-  getRestaurantTables,
-} from "../../services/restaurantTablesApi";
-import {
-  getOpenOrdersByTable,
-  startOrderForTable,
-} from "../../services/ordersApi";
+import { getRestaurantTables } from "../../services/restaurantTablesApi";
+import { getOpenOrders, startOrderForTable } from "../../services/ordersApi";
 
 function statusBadge(status) {
   const s = (status || "").toUpperCase();
@@ -36,10 +30,11 @@ export default function StaffTablesPage() {
   async function loadData() {
     setLoading(true);
     setLoadError(null);
+
     try {
       const [tablesRes, openOrdersRes] = await Promise.all([
         getRestaurantTables(),
-        getOpenOrdersByTable(),
+        getOpenOrders(), // ✅ via /orders/status/NEW
       ]);
 
       const tData = tablesRes.data?.data ?? tablesRes.data ?? [];
@@ -65,21 +60,18 @@ export default function StaffTablesPage() {
 
   // Table + order gecombineerd
   const merged = useMemo(() => {
+    // ✅ backend field: restaurantTableId (niet tableId)
     const mapOrders = new Map();
     openOrders.forEach((o) => {
-      if (o.tableId != null) {
-        mapOrders.set(o.tableId, o);
-      }
+      const tid = o.restaurantTableId;
+      if (tid != null) mapOrders.set(tid, o);
     });
 
     return tables
-      .filter((t) => t.active !== false) // alleen actieve tafels
+      .filter((t) => t.active !== false)
       .map((t) => {
         const order = mapOrders.get(t.id);
-        return {
-          ...t,
-          currentOrder: order || null,
-        };
+        return { ...t, currentOrder: order || null };
       });
   }, [tables, openOrders]);
 
@@ -101,20 +93,16 @@ export default function StaffTablesPage() {
     setActionLoadingId(table.id);
 
     try {
+      // ✅ nieuwe endpoint /orders/start met payload die klopt
       const res = await startOrderForTable({
-        tableId: table.id,
-        staffId: staffId,
+        userId: staffId,                 // staff is de user die order start
+        restaurantTableId: table.id,      // tafel
       });
 
       const order = res.data?.data ?? res.data;
-      if (!order || !order.id) {
-        throw new Error("Order could not be created.");
-      }
+      if (!order || !order.id) throw new Error("Order could not be created.");
 
-      // opnieuw laden zodat status klopt
-      await loadData();
-
-      // naar order pagina
+      await loadData(); // refresh open orders
       navigate(`/staff/orders/${order.id}`);
     } catch (err) {
       const msg =
@@ -131,6 +119,21 @@ export default function StaffTablesPage() {
   function handleOpenOrder(orderId) {
     if (!orderId) return;
     navigate(`/staff/orders/${orderId}`);
+  }
+
+  function calcTotal(order) {
+    if (!order) return 0;
+
+    // backend heeft geen totalAmount -> bereken uit items
+    if (Array.isArray(order.items)) {
+      return order.items.reduce(
+        (sum, it) =>
+          sum + (it.itemsPrice ?? 0) * (it.itemsQuantity ?? 0),
+        0
+      );
+    }
+
+    return order.totalAmount ?? order.total ?? order.totalPrice ?? 0;
   }
 
   return (
@@ -181,45 +184,25 @@ export default function StaffTablesPage() {
               <table className="table table-sm table-bordered mb-0 align-middle">
                 <thead className="table-light">
                   <tr>
-                    <th
-                      style={{ width: "6%" }}
-                      className="text-center align-middle"
-                    >
-                      #
-                    </th>
+                    <th style={{ width: "6%" }} className="text-center align-middle">#</th>
                     <th style={{ width: "15%" }}>Label</th>
                     <th style={{ width: "10%" }}>Seats</th>
                     <th style={{ width: "15%" }}>Status</th>
                     <th style={{ width: "20%" }}>Current staff</th>
-                    <th
-                      style={{ width: "20%" }}
-                      className="text-end align-middle"
-                    >
-                      Current total
-                    </th>
-                    <th
-                      style={{ width: "14%" }}
-                      className="text-center align-middle"
-                    >
-                      Actions
-                    </th>
+                    <th style={{ width: "20%" }} className="text-end align-middle">Current total</th>
+                    <th style={{ width: "14%" }} className="text-center align-middle">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map((t, index) => {
                     const s = (t.statusName || "").toUpperCase();
                     const currentOrder = t.currentOrder;
-                    const staffName =
-                      currentOrder?.staffName ||
-                      (currentOrder?.staffFirstName || currentOrder?.staffLastName
-                        ? `${currentOrder.staffFirstName ?? ""} ${
-                            currentOrder.staffLastName ?? ""
-                          }`.trim()
-                        : "-");
 
-                    const total = currentOrder?.totalAmount ?? 0;
-                    const isMine =
-                      currentOrder && currentOrder.staffId === staffId;
+                    // jouw OrderResponseDto heeft userEmail + userId
+                    const staffName = currentOrder?.userEmail || "-";
+
+                    const total = calcTotal(currentOrder);
+                    const isMine = currentOrder && Number(currentOrder.userId) === Number(staffId);
 
                     const canTake =
                       !currentOrder &&
@@ -229,21 +212,14 @@ export default function StaffTablesPage() {
 
                     return (
                       <tr key={t.id ?? index}>
-                        <td className="text-center align-middle">
-                          {index + 1}
-                        </td>
+                        <td className="text-center align-middle">{index + 1}</td>
                         <td className="align-middle">{t.label}</td>
                         <td className="align-middle">{t.seats ?? "-"}</td>
-                        <td className="align-middle">
-                          {statusBadge(t.statusName)}
-                        </td>
+                        <td className="align-middle">{statusBadge(t.statusName)}</td>
                         <td className="align-middle">{staffName}</td>
                         <td className="text-end align-middle">
                           {total
-                            ? total.toLocaleString("nl-NL", {
-                                style: "currency",
-                                currency: "EUR",
-                              })
+                            ? total.toLocaleString("nl-NL", { style: "currency", currency: "EUR" })
                             : "-"}
                         </td>
                         <td className="text-center align-middle">
@@ -255,9 +231,7 @@ export default function StaffTablesPage() {
                                 disabled={actionLoadingId === t.id}
                                 onClick={() => handleTakeTable(t)}
                               >
-                                {actionLoadingId === t.id
-                                  ? "Starting..."
-                                  : "Take table"}
+                                {actionLoadingId === t.id ? "Starting..." : "Take table"}
                               </button>
                             )}
 
@@ -265,24 +239,18 @@ export default function StaffTablesPage() {
                               <button
                                 type="button"
                                 className="btn btn-sm btn-outline-primary"
-                                onClick={() =>
-                                  handleOpenOrder(currentOrder.id)
-                                }
+                                onClick={() => handleOpenOrder(currentOrder.id)}
                               >
                                 Open order
                               </button>
                             )}
 
                             {currentOrder && !isMine && (
-                              <span className="badge bg-secondary">
-                                Taken by other
-                              </span>
+                              <span className="badge bg-secondary">Taken by other</span>
                             )}
 
                             {!canTake && !currentOrder && s === "OCCUPIED" && (
-                              <span className="badge bg-secondary">
-                                Busy
-                              </span>
+                              <span className="badge bg-secondary">Busy</span>
                             )}
                           </div>
                         </td>

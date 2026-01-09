@@ -53,6 +53,7 @@ function StaffLayout() {
           <Route path="tables" element={<StaffTables />} />
           <Route path="reservations" element={<StaffReservations />} />
           <Route path="orders/:orderId" element={<StaffOrder />} />
+          {/* ✅ payment route */}
           <Route path="payment/:orderId" element={<StaffPayment />} />
           <Route path="*" element={<Navigate to="tables" replace />} />
         </Routes>
@@ -64,22 +65,13 @@ function StaffLayout() {
 function RequireRole({ role, children }) {
   const { user, isAuthenticated, initializing } = useAuth();
 
-  if (initializing) {
-    return <div>Loading...</div>;
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
+  if (initializing) return <div>Loading...</div>;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
 
   const userRole = user?.role?.toUpperCase() ?? "";
   if (userRole !== role.toUpperCase()) {
-    if (userRole === "ADMIN") {
-      return <Navigate to="/admin/home" replace />;
-    }
-    if (userRole === "STAFF") {
-      return <Navigate to="/staff/tables" replace />;
-    }
+    if (userRole === "ADMIN") return <Navigate to="/admin/home" replace />;
+    if (userRole === "STAFF") return <Navigate to="/staff/tables" replace />;
     return <Navigate to="/login" replace />;
   }
 
@@ -89,21 +81,12 @@ function RequireRole({ role, children }) {
 function PublicRoute({ children }) {
   const { isAuthenticated, initializing, user } = useAuth();
 
-  if (initializing) {
-    return <div>Loading...</div>;
-  }
-
-  if (!isAuthenticated) {
-    return children;
-  }
+  if (initializing) return <div>Loading...</div>;
+  if (!isAuthenticated) return children;
 
   const role = user?.role?.toUpperCase();
-  if (role === "ADMIN") {
-    return <Navigate to="/admin/home" replace />;
-  }
-  if (role === "STAFF") {
-    return <Navigate to="/staff/tables" replace />;
-  }
+  if (role === "ADMIN") return <Navigate to="/admin/home" replace />;
+  if (role === "STAFF") return <Navigate to="/staff/tables" replace />;
 
   return <Navigate to="/login" replace />;
 }
