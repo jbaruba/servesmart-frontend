@@ -25,7 +25,7 @@ jobs:
 
       - name: Build React app
         env:
-          CI: false   # 👈 hierdoor worden warnings geen errors meer
+          CI: false
         run: npm run build
 
       - name: Upload build artifact
