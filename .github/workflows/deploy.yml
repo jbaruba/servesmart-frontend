@@ -1,11 +1,12 @@
-name: Build & Deploy Frontend
+name: Build Push Deploy Frontend
 
 on:
   push:
     branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
-  deploy:
+  build-push-deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -20,19 +21,22 @@ jobs:
       - name: Push
         run: docker push ghcr.io/${{ secrets.GHCR_USERNAME }}/servesmart-frontend:latest
 
-      - name: Setup SSH
+      - name: Setup SSH agent
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SERVER_SSH_KEY }}" | tr -d '\r' > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
+          eval "$(ssh-agent -s)"
+          echo "${{ secrets.SERVER_SSH_KEY }}" | tr -d '\r' | ssh-add -
           ssh-keyscan -p "${{ secrets.SERVER_PORT }}" "${{ secrets.SERVER_HOST }}" >> ~/.ssh/known_hosts
 
       - name: Deploy on server
         env:
           GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
           GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          SERVER_PORT: ${{ secrets.SERVER_PORT }}
         run: |
-          ssh -i ~/.ssh/id_rsa -p "${{ secrets.SERVER_PORT }}" "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" << EOF
+          ssh -p "$SERVER_PORT" "$SERVER_USER@$SERVER_HOST" << 'EOF'
             set -e
             cd /opt/servesmart
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
