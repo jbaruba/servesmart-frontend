@@ -1,4 +1,4 @@
-name: Build & Deploy ServeSmart Frontend
+name: Frontend CI CD
 
 on:
   push:
@@ -8,37 +8,68 @@ permissions:
   contents: read
   packages: write
 
+env:
+  IMAGE_LATEST: ghcr.io/jbaruba/servesmart-frontend:latest
+  IMAGE_SHA: ghcr.io/jbaruba/servesmart-frontend:${{ github.sha }}
+
 jobs:
-  build-and-push:
+  build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: |
+            ${{ env.IMAGE_LATEST }}
+            ${{ env.IMAGE_SHA }}
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+  push:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ secrets.GHCR_USERNAME }}
           password: ${{ secrets.GHCR_TOKEN }}
-
-      - name: Build & push frontend image
-        uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v6
         with:
           context: .
           push: true
           tags: |
-            ghcr.io/jbaruba/servesmart-frontend:latest
-            ghcr.io/jbaruba/servesmart-frontend:${{ github.sha }}
+            ${{ env.IMAGE_LATEST }}
+            ${{ env.IMAGE_SHA }}
+
+  ssh-setup:
+    needs: push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add SSH key to agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
+
+      - name: Test SSH
+        env:
+          SERVER_HOST_RAW: ${{ secrets.SERVER_HOST }}
+          SERVER_USER_RAW: ${{ secrets.SERVER_USER }}
+          SERVER_PORT_RAW: ${{ secrets.SERVER_PORT }}
+        run: |
+          set -e
+          SERVER_HOST="$(printf '%s' "$SERVER_HOST_RAW" | tr -d '\r\n ' )"
+          SERVER_USER="$(printf '%s' "$SERVER_USER_RAW" | tr -d '\r\n ' )"
+          SERVER_PORT="$(printf '%s' "$SERVER_PORT_RAW" | tr -d '\r\n ' )"
+          TARGET="${SERVER_USER}@${SERVER_HOST}"
+          ssh -o StrictHostKeyChecking=no -p "$SERVER_PORT" "$TARGET" "echo SSH_OK"
 
   deploy:
-    needs: build-and-push
+    needs: ssh-setup
     runs-on: ubuntu-latest
-
     steps:
       - name: Add SSH key to agent
         uses: webfactory/ssh-agent@v0.9.0
@@ -56,6 +87,5 @@ jobs:
           SERVER_USER="$(printf '%s' "$SERVER_USER_RAW" | tr -d '\r\n ' )"
           SERVER_PORT="$(printf '%s' "$SERVER_PORT_RAW" | tr -d '\r\n ' )"
           TARGET="${SERVER_USER}@${SERVER_HOST}"
-
           ssh -o StrictHostKeyChecking=no -p "$SERVER_PORT" "$TARGET" \
             "set -e; cd /opt/servesmart; docker compose pull servesmart-frontend; docker compose up -d --remove-orphans servesmart-frontend; docker image prune -f; docker compose ps servesmart-frontend"
