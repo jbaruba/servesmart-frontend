@@ -19,24 +19,3 @@ jobs:
 
       - name: Push
         run: docker push ghcr.io/${{ secrets.GHCR_USERNAME }}/servesmart-frontend:latest
-
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SERVER_SSH_KEY }}" | tr -d '\r' > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -p "${{ secrets.SERVER_PORT }}" "${{ secrets.SERVER_HOST }}" >> ~/.ssh/known_hosts
-
-      - name: Deploy on server
-        env:
-          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
-          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
-        run: |
-          ssh -i ~/.ssh/id_rsa -p "${{ secrets.SERVER_PORT }}" "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" << 'EOF'
-            set -e
-            cd /opt/servesmart
-            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
-            docker compose pull servesmart-frontend
-            docker compose up -d servesmart-frontend
-            docker compose ps servesmart-frontend
-          EOF
